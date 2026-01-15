@@ -17,6 +17,11 @@ import {
 import SignaturePad from '../components/SignaturePad';
 import { jsPDF } from 'jspdf';
 
+// Generador de ID compatible
+const generateId = () => {
+  return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+};
+
 interface EmployeeTrainingProps {
   state: AppState;
   updateState: (newState: Partial<AppState>) => void;
@@ -47,9 +52,9 @@ const EmployeeTraining: React.FC<EmployeeTrainingProps> = ({ state, updateState 
   if (!company || !training) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4 text-center">
-        <div>
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl">
           <h2 className="text-2xl font-bold text-red-500 mb-2">Error de Acceso</h2>
-          <p className="text-slate-400">Capacitación o Empresa no encontrada. Verifique el enlace.</p>
+          <p className="text-slate-400">La capacitación o empresa solicitada no existe o el enlace es incorrecto.</p>
         </div>
       </div>
     );
@@ -65,12 +70,12 @@ const EmployeeTraining: React.FC<EmployeeTrainingProps> = ({ state, updateState 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!empSignature || !empName || !empDni) {
-      alert('Por favor, complete todos los campos y firme la asistencia.');
+    if (!empSignature || !empName.trim() || !empDni.trim()) {
+      alert('Por favor, complete todos los campos y realice su firma digital.');
       return;
     }
     const newRecord = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       trainingId: training.id,
       companyId: company.id,
       employeeName: empName,
@@ -82,116 +87,122 @@ const EmployeeTraining: React.FC<EmployeeTrainingProps> = ({ state, updateState 
     setIsSubmitted(true);
   };
 
-  const downloadCertificate = () => {
-    const doc = new jsPDF('landscape');
-    const w = doc.internal.pageSize.getWidth();
-    const h = doc.internal.pageSize.getHeight();
+  const handleDownloadCertificate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      const doc = new jsPDF('landscape');
+      const w = doc.internal.pageSize.getWidth();
+      const h = doc.internal.pageSize.getHeight();
 
-    doc.setDrawColor(16, 185, 129);
-    doc.setLineWidth(5);
-    doc.rect(10, 10, w - 20, h - 20);
+      doc.setDrawColor(16, 185, 129);
+      doc.setLineWidth(5);
+      doc.rect(10, 10, w - 20, h - 20);
 
-    doc.setFontSize(40);
-    doc.setTextColor(2, 6, 23);
-    doc.text('CONSTANCIA DE CAPACITACIÓN', w / 2, 50, { align: 'center' });
+      doc.setFontSize(35);
+      doc.setTextColor(2, 6, 23);
+      doc.text('CONSTANCIA DE ASISTENCIA', w / 2, 45, { align: 'center' });
 
-    doc.setFontSize(20);
-    doc.text('Certificamos que', w / 2, 75, { align: 'center' });
-    
-    doc.setFontSize(30);
-    doc.setFont('helvetica', 'bold');
-    doc.text(empName.toUpperCase(), w / 2, 95, { align: 'center' });
-    
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`DNI: ${empDni}`, w / 2, 105, { align: 'center' });
+      doc.setFontSize(18);
+      doc.text('Por la presente se certifica que:', w / 2, 70, { align: 'center' });
+      
+      doc.setFontSize(28);
+      doc.setFont('helvetica', 'bold');
+      doc.text(empName.toUpperCase(), w / 2, 90, { align: 'center' });
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Identificación: ${empDni}`, w / 2, 100, { align: 'center' });
 
-    doc.text(`Ha completado satisfactoriamente la capacitación de:`, w / 2, 125, { align: 'center' });
-    doc.setFont('helvetica', 'bold');
-    doc.text(training.title, w / 2, 135, { align: 'center' });
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Para la empresa: ${company.name}`, w / 2, 145, { align: 'center' });
+      doc.text(`Ha completado con éxito la capacitación obligatoria:`, w / 2, 120, { align: 'center' });
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text(training.title, w / 2, 130, { align: 'center' });
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Prestada para la empresa: ${company.name}`, w / 2, 140, { align: 'center' });
 
-    const footerY = h - 45;
-    
-    if (state.instructor?.signature) {
-      doc.addImage(state.instructor.signature, 'PNG', 40, footerY - 20, 40, 20);
+      const footerY = h - 45;
+      
+      // Firma Instructor
+      if (state.instructor?.signature) {
+        doc.addImage(state.instructor.signature, 'PNG', 40, footerY - 20, 40, 20);
+      }
+      doc.setDrawColor(0);
+      doc.line(30, footerY, 90, footerY);
+      doc.setFontSize(9);
+      doc.text(state.instructor?.name || 'Instructor Responsable', 60, footerY + 5, { align: 'center' });
+      doc.text(state.instructor?.role || 'Firma del Instructor', 60, footerY + 10, { align: 'center' });
+
+      // Firma Empleado
+      if (empSignature) {
+        doc.addImage(empSignature, 'PNG', w - 80, footerY - 20, 40, 20);
+      }
+      doc.line(w - 90, footerY, w - 30, footerY);
+      doc.text(empName, w - 60, footerY + 5, { align: 'center' });
+      doc.text('Firma del Participante', w - 60, footerY + 10, { align: 'center' });
+
+      doc.setFontSize(10);
+      doc.text(`Emitido electrónicamente el ${new Date().toLocaleDateString()}`, w / 2, h - 15, { align: 'center' });
+
+      doc.save(`certificado_${empName.replace(/\s+/g, '_')}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert("Error al generar el certificado PDF.");
     }
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.5);
-    doc.line(30, footerY, 90, footerY);
-    doc.setFontSize(10);
-    doc.text(state.instructor?.name || 'Instructor', 60, footerY + 5, { align: 'center' });
-    doc.text(state.instructor?.role || 'Instructor Responsable', 60, footerY + 10, { align: 'center' });
-
-    if (empSignature) {
-      doc.addImage(empSignature, 'PNG', w - 80, footerY - 20, 40, 20);
-    }
-    doc.line(w - 90, footerY, w - 30, footerY);
-    doc.text(empName, w - 60, footerY + 5, { align: 'center' });
-    doc.text('Firma del Capacitado', w - 60, footerY + 10, { align: 'center' });
-
-    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString()}`, w / 2, h - 15, { align: 'center' });
-
-    doc.save(`constancia_${empName.replace(/\s+/g, '_')}.pdf`);
   };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12 pb-24">
       <div className="mb-12">
         <p className="text-emerald-500 font-bold tracking-widest uppercase text-xs mb-2">{company.name}</p>
-        <h1 className="text-4xl font-extrabold text-white mb-4">{training.title}</h1>
+        <h1 className="text-4xl font-extrabold text-white mb-6">{training.title}</h1>
         
         <div className="relative pt-1">
-          <div className="flex mb-2 items-center justify-between">
-            <div>
-              <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-emerald-600 bg-emerald-200/10">
-                Progreso de Lectura
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-xs font-semibold inline-block text-emerald-600">
-                {Math.round(progress)}%
-              </span>
-            </div>
+          <div className="flex mb-3 items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
+              Progreso de Capacitación
+            </span>
+            <span className="text-lg font-black text-emerald-500">
+              {Math.round(progress)}%
+            </span>
           </div>
-          <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-slate-800">
-            <div style={{ width: `${progress}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-emerald-500 transition-all duration-500"></div>
+          <div className="overflow-hidden h-3 mb-4 flex rounded-full bg-slate-800 border border-slate-700 p-0.5">
+            <div style={{ width: `${progress}%` }} className="flex flex-col text-center whitespace-nowrap text-white justify-center bg-emerald-500 rounded-full transition-all duration-700 ease-out shadow-[0_0_15px_rgba(16,185,129,0.4)]"></div>
           </div>
         </div>
       </div>
 
       {!isSubmitted ? (
-        <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
-            <div className="p-6 border-b border-slate-800 bg-slate-800/50">
-              <h3 className="font-bold flex items-center text-slate-200"><FileText size={20} className="mr-2 text-emerald-500" /> Contenido Obligatorio</h3>
+        <div className="space-y-8">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-slate-800 bg-slate-800/30">
+              <h3 className="font-bold flex items-center text-slate-200 uppercase tracking-widest text-xs"><FileText size={18} className="mr-3 text-emerald-500" /> Material de Estudio Obligatorio</h3>
             </div>
-            <div className="p-2">
+            <div className="p-4 space-y-2">
               {training.links.map(l => (
                 <div 
                   key={l.id} 
-                  className="group flex items-center justify-between p-4 hover:bg-slate-800 active:bg-slate-700/50 rounded-xl transition-all cursor-pointer"
+                  className={`group flex items-center justify-between p-4 rounded-2xl transition-all cursor-pointer border ${viewedLinks.includes(l.id) ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-slate-950/50 border-transparent hover:bg-slate-800'}`}
                   onClick={() => toggleLink(l.id)}
                 >
                   <div className="flex items-center space-x-4 flex-1">
                     {viewedLinks.includes(l.id) ? (
                       <CheckCircle className="text-emerald-500 shrink-0" size={24} />
                     ) : (
-                      <Circle className="text-slate-600 shrink-0" size={24} />
+                      <Circle className="text-slate-700 shrink-0" size={24} />
                     )}
-                    <span className={`font-medium transition-all ${viewedLinks.includes(l.id) ? 'text-slate-500 line-through' : 'text-slate-100'}`}>{l.title}</span>
+                    <span className={`font-bold text-sm transition-all ${viewedLinks.includes(l.id) ? 'text-emerald-500/70' : 'text-slate-100'}`}>{l.title}</span>
                   </div>
                   <a 
                     href={l.url} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     onClick={(e) => {
-                      e.stopPropagation(); // IMPORTANTE: Evita el doble toggle
+                      e.stopPropagation();
                       if (!viewedLinks.includes(l.id)) toggleLink(l.id);
                     }}
-                    className="p-3 bg-slate-800 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white active:scale-95 transition-all ml-4"
+                    className="p-3 bg-slate-800 text-emerald-500 rounded-xl hover:bg-emerald-500 hover:text-white transition-all ml-4 flex items-center shadow-lg"
                   >
                     <ExternalLink size={20} />
                   </a>
@@ -201,89 +212,94 @@ const EmployeeTraining: React.FC<EmployeeTrainingProps> = ({ state, updateState 
           </div>
 
           {progress === 100 && (
-            <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-500 mb-4">
-                  <CheckCircle2 size={32} />
+            <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-8 shadow-2xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 mb-4 ring-8 ring-emerald-500/5">
+                  <CheckCircle2 size={36} />
                 </div>
-                <h3 className="text-2xl font-bold text-white">¡Contenido Completado!</h3>
-                <p className="text-slate-400">Complete su firma de asistencia para finalizar el proceso.</p>
+                <h3 className="text-2xl font-black text-white">Contenido Completado</h3>
+                <p className="text-slate-400 text-sm mt-2">Por favor, registre su firma para validar la asistencia y obtener su certificado.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Nombre y Apellido</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nombre y Apellido</label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3.5 text-slate-500" size={18} />
+                      <User className="absolute left-4 top-4 text-slate-500" size={18} />
                       <input 
                         value={empName} 
                         onChange={e => setEmpName(e.target.value)}
                         required
-                        className="w-full pl-10 pr-4 py-3.5 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 text-white transition-all" 
-                        placeholder="Juan Carlos Pérez"
+                        className="w-full pl-12 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-emerald-500 text-white outline-none transition-all" 
+                        placeholder="Nombre completo"
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">DNI / ID</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Documento / DNI</label>
                     <div className="relative">
-                      <CreditCard className="absolute left-3 top-3.5 text-slate-500" size={18} />
+                      <CreditCard className="absolute left-4 top-4 text-slate-500" size={18} />
                       <input 
                         value={empDni} 
                         onChange={e => setEmpDni(e.target.value)}
                         required
-                        className="w-full pl-10 pr-4 py-3.5 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 text-white transition-all" 
-                        placeholder="XXXXXXXX"
+                        className="w-full pl-12 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-emerald-500 text-white outline-none transition-all" 
+                        placeholder="DNI del participante"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Su Firma Digital</label>
-                  <SignaturePad onSave={setEmpSignature} className="h-40 border-slate-700 shadow-inner" />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Firma Digital</label>
+                  <SignaturePad onSave={setEmpSignature} className="h-44 border-slate-700 shadow-inner" />
                 </div>
 
                 <button 
                   type="submit" 
-                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center transform active:scale-[0.98]"
+                  className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl transition-all shadow-xl shadow-emerald-900/40 flex items-center justify-center transform active:scale-[0.98] uppercase tracking-widest text-sm"
                 >
-                  Registrar Asistencia Final <ChevronRight size={20} className="ml-2" />
+                  Registrar Firma de Asistencia <ChevronRight size={20} className="ml-2" />
                 </button>
               </form>
             </div>
           )}
         </div>
       ) : (
-        <div className="text-center space-y-8 animate-in zoom-in duration-300">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500 text-white shadow-2xl shadow-emerald-500/30">
-            <Award size={48} />
+        <div className="text-center space-y-10 animate-in zoom-in duration-500 pt-8">
+          <div className="relative inline-block">
+            <div className="absolute inset-0 bg-emerald-500 blur-3xl opacity-20 animate-pulse"></div>
+            <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-full bg-emerald-600 text-white shadow-2xl">
+              <Award size={56} />
+            </div>
           </div>
-          <div className="space-y-2">
-            <h2 className="text-3xl font-bold text-white">¡Registro Exitoso!</h2>
-            <p className="text-slate-400">Su asistencia ha sido procesada. Puede descargar su comprobante ahora.</p>
+          <div className="space-y-3">
+            <h2 className="text-4xl font-black text-white">¡Asistencia Registrada!</h2>
+            <p className="text-slate-400 font-medium">Su capacitación ha finalizado correctamente. Descargue su comprobante oficial a continuación.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-xl mx-auto">
             <button 
-              onClick={downloadCertificate}
-              className="flex items-center justify-center py-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95"
+              type="button"
+              onClick={handleDownloadCertificate}
+              className="flex items-center justify-center py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl transition-all shadow-xl active:scale-95 uppercase tracking-widest text-xs"
             >
-              <Download size={20} className="mr-2" /> Descargar Constancia
+              <Download size={20} className="mr-3" /> Descargar Constancia
             </button>
             <button 
+              type="button"
               onClick={() => {
-                alert("Gracias por completar la capacitación. Ya puede cerrar esta ventana.");
-                try { window.close(); } catch(e) {}
+                alert("Proceso finalizado. Muchas gracias.");
+                window.location.hash = "#/";
               }}
-              className="flex items-center justify-center py-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white font-bold rounded-xl transition-all active:scale-95"
+              className="flex items-center justify-center py-5 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-xs"
             >
-              Finalizar y Salir
+              Cerrar y Salir
             </button>
           </div>
           
-          <p className="text-sm text-slate-600 pt-12">© 2025 TrainerPro System - Módulo de Capacitación</p>
+          <p className="text-[10px] text-slate-700 pt-16 font-black uppercase tracking-[0.3em]">TrainerPro System © 2025</p>
         </div>
       )}
     </div>
