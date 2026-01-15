@@ -4,8 +4,19 @@ import { AppState } from '../types';
 const STORAGE_KEY = 'trainerpro_data';
 
 export const loadState = (): AppState => {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) {
+      return {
+        instructor: null,
+        companies: [],
+        trainings: [],
+        attendances: []
+      };
+    }
+    return JSON.parse(saved);
+  } catch (error) {
+    console.error("Error loading state from storage:", error);
     return {
       instructor: null,
       companies: [],
@@ -13,9 +24,12 @@ export const loadState = (): AppState => {
       attendances: []
     };
   }
-  return JSON.parse(saved);
 };
 
 export const saveState = (state: AppState) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.error("Error saving state to storage:", error);
+  }
 };
