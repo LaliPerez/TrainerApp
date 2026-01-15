@@ -1,47 +1,116 @@
 
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrainerPro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>TrainerPro - Dashboard Profesional</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-main: #020617;
+            --bg-card: #0f172a;
+            --bg-input: #1e293b;
+            --primary: #10b981;
+            --primary-hover: #059669;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --danger: #ef4444;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #020617; /* Slate 950 */
-            color: #f8fafc; /* Slate 50 */
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            overflow-x: hidden;
         }
-        .signature-canvas {
-            touch-action: none;
-            cursor: crosshair;
+
+        /* Utilidades de Diseño */
+        .tp-container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .tp-card { 
+            background: var(--bg-card); 
+            border: 1px solid var(--border); 
+            border-radius: 1rem; 
+            padding: 1.5rem; 
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
         }
-        /* Custom scrollbar for dark mode */
-        ::-webkit-scrollbar {
-            width: 8px;
+        .tp-input {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
         }
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
+        .tp-input:focus { border-color: var(--primary); }
+        .tp-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
+        .tp-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .tp-btn-danger { background: var(--danger); }
+        
+        /* Flexbox Shorthands */
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-4 { gap: 1rem; }
+        .grid { display: grid; }
+        .grid-cols-2 { grid-template-columns: 1fr 1fr; }
+        
+        /* Custom Components */
+        .sidebar { width: 260px; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--border); position: fixed; left: 0; top: 0; }
+        .main-content { margin-left: 260px; padding: 2rem; min-height: 100vh; }
+        .nav-item { 
+            display: flex; 
+            align-items: center; 
+            padding: 0.75rem 1.5rem; 
+            color: var(--text-muted); 
+            text-decoration: none; 
+            border-radius: 0.5rem; 
+            margin: 0.25rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
+        .nav-item.active { background: var(--primary); color: white; }
+        .nav-item:hover:not(.active) { background: var(--bg-input); color: white; }
+
+        .signature-canvas { cursor: crosshair; touch-action: none; background: #000; border-radius: 0.5rem; }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
         }
     </style>
-<script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.28.0",
+    "lucide-react": "https://esm.sh/lucide-react@0.469.0?external=react",
+    "qrcode.react": "https://esm.sh/qrcode.react@4.1.0?external=react",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "qrcode.react": "https://esm.sh/qrcode.react@^4.2.0",
-    "jspdf": "https://esm.sh/jspdf@^4.0.0"
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
